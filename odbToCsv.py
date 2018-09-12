@@ -36,7 +36,7 @@ def distributed_selection(lst, num):
 
     """
 
-    if num > len(lst):
+    if num >= len(lst):
         return lst
 
     selection = []
