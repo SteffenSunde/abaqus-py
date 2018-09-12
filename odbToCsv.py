@@ -1,10 +1,18 @@
 def field_to_csv(odb_handle, elset_handle, field_name, step_number=-1, frame_number=-1):
+    """
+    Outputs the given field at given frame number in odb file.
+
+    TODO:
+    - Make similar for nodal quantities
+    - Test
+    """
     from abaqusConstants import CENTROID
     import csv
 
     frame_handle = odb_handle.steps.items()[step_number][1].frames[frame_number]
     field = frame_handle.fieldOutputs[field_name].getSubset(region=elset_handle, position=CENTROID)
-    file_name = 'CENTROID-{}-{}.csv'.format(elset_handle.name, field.name)
+    file_name = 'CENTROID-{}-{}-{}-{}.csv'.format(elset_handle.name, field.name, step_number, frame_number)
+    print("Exporting {}".format(file_name))
     with open(file_name, 'w') as csv_file:
         csv_writer = csv.writer(csv_file, delimiter=',')
         csv_writer.writerow(('Step time:{}'.format(frame_handle.frameValue),))
@@ -13,15 +21,21 @@ def field_to_csv(odb_handle, elset_handle, field_name, step_number=-1, frame_num
             csv_writer.writerow((point.elementLabel,) + tuple(point.data))
 
 
-def field_history_to_csv(odb_handle, elset_handle, field_name, steps=[1], frequency=1):
+def field_history_to_csv(odb_handle, elset_handle, field_name, steps=[-1], frequency=1):
+    """
+    Creates one csv file per frame distributed with given frequency in the given step.
+
+    TODO:
+    - Test
+    - Perhaps create a folder?
+    """
     # Create folder?
     for step in steps:
-        step = odb_handle.steps.items()[step][1]
-        if frequency < len(step.frames) and frequency > 1:
-            frames = distributed_selection(step.frames, frequency)
-            #frames = [step.frames[-1]]
-            for frame in frames:
-                field_to_csv(odb_handle, elset_handle, field_name)
+        step_handle = odb_handle.steps.items()[step][1]
+        frames = distributed_selection(range(len(step_handle.frames)), frequency)
+        #frames = [step.frames[-1]]
+        for frame in frames:
+            field_to_csv(odb_handle, elset_handle, field_name, step, frame)
 
 
 def distributed_selection(lst, num):
@@ -32,8 +46,8 @@ def distributed_selection(lst, num):
 
     For two points, the mid and last point should be selected...
     
-    Not thuroughly tested
-
+    TODO:
+    - Test
     """
 
     if num >= len(lst):
