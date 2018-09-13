@@ -59,7 +59,7 @@ def scalarFieldToVTK(odb, part_name, fields, step=-1, frame=-1, output_file = ''
         cell_types = list()
 
         # Dictionary to translate Abaqus element types to corresponding VTK Legacy
-        cell_type_dict = {'C3D8R': '12', 'C3D8': '12', 'C3D4': '10', 'C3D10': '24', 'CPS3': '5', 'CPE3': '5', 'CPS4R': '5', 'CPE4R': '5'}
+        cell_type_dict = {'C3D8R': '12', 'C3D8': '12', 'C3D4': '10', 'C3D10': '24', 'CPS3': '5', 'CPE3': '5', 'CPS4R': '5', 'CPE4R': '5', 'CPE8R': '23', 'CPS8R': '23'}
 
         # Total number of data points in list of element connectivity
         num_cell_data_points = sum(len(element.connectivity) for element in part.elements)
