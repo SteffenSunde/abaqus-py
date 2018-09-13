@@ -19,6 +19,7 @@ def scalarFieldToVTK(odb, part_name, fields, step=-1, frame=-1, output_file = ''
         - Testing
         - Add vector fields
         - Add tensor fields
+        - Add field data for subsets (e.g. 0 for the remaining points)
 
     """
     from abaqusConstants import CENTROID, SCALAR

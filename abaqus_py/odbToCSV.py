@@ -29,7 +29,7 @@ def field_history_to_csv(odb_handle, elset_handle, field_name, steps=[-1], frequ
     - Test
     - Perhaps create a folder?
     """
-    # Create folder?
+
     for step in steps:
         step_handle = odb_handle.steps.items()[step][1]
         frames = distributed_selection(range(len(step_handle.frames)), frequency)
@@ -66,3 +66,35 @@ def distributed_selection(lst, num):
 
     return selection
 
+
+def csv_to_legacy_vtk(csv_file_name, vtk_file_name):
+    """
+    Translates a csv field to vtk legacy cell data..
+
+    TODO:
+    - Support for partial fields
+    """
+
+    import csv
+
+    with open(csv_file_name, 'r') as csv_file:
+        reader = csv.reader(csv_file)
+        num_rows = sum([1 for row in reader]) - 1
+
+        if num_rows < 0:
+            raise Exception("File empty!")
+        
+        csv_file.seek(0)
+        header = next(reader)
+        field_name = header[2]
+        print("Header: {}".format(header))
+        
+        print("Number of rows: {}".format(num_rows))
+    	
+        with open(vtk_file_name, 'w+') as vtk_file:
+            vtk_file.write('\n\nCELL_DATA {}'.format(num_rows))
+            vtk_file.write('\nSCALARS {}'.format(field_name))
+            vtk_file.write('\nLOOKUP_TABLE default\n')
+        
+            for row in reader:
+                vtk_file.write('{}\n'.format(row[1]))
