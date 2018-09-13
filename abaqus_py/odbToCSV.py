@@ -98,3 +98,57 @@ def csv_to_legacy_vtk(csv_file_name, vtk_file_name):
         
             for row in reader:
                 vtk_file.write('{}\n'.format(row[1]))
+    return
+
+
+def element_stress_history_to_csv(odb, region, output_file='', steps='', frame=-1):
+    """
+    Extracts centroid stress history for an element set and stores in comma separated file.
+
+    TODO:
+    - Read field once for each time step? Might be more efficient.
+    """
+
+    try:
+        from abaqusConstants import CENTROID
+        element_set = odb.rootAssembly.elementSets[region.upper()]
+    except ImportError as ex:
+        raise ImportError('Failed to import abaqus modules!')
+    except KeyError as ex:
+        raise IOError('Could not find element set in odb-file: ' + str(ex) + '. Element set(s) found: ' + str([el[0] for el in odb.rootAssembly.elementSets.items()]))
+
+    if output_file == '':
+        csv_path = region + '.csv'
+    else:
+        csv_path = output_file
+
+    if steps == '':
+        step_keys = odb.steps.keys()
+    else:
+        step_keys = [odb.steps.keys()[i] for i in steps]
+
+    # For debugging
+    print('Found {} elements in region {}'.format(len(element_set.elements[0]), region))
+    print('Number of history points: {}'.format(len(step_keys)))
+    print('Generating CSV file '+ csv_path)
+
+    if element_set.elements[0][0].type[1] == '3':
+        dimension = '3D'
+    else:
+        dimension = '2D'
+
+    with open(csv_path, 'w') as csv_file:
+        csv_file.write('Centroid {} stress tensor history\n'.format(dimension))
+
+        for element in element_set.elements[0]:
+            row = str(element.label) + ','
+            for step in step_keys:
+                field = odb.steps[step].frames[frame].fieldOutputs['S'].getSubset(region=element, position=CENTROID) # Extrapolated and averaged?
+                for component in field.values[0].data:
+                    row = row + str(component) + ','
+            row = row + '\n'
+            csv_file.write(row)
+
+    return
+
+
