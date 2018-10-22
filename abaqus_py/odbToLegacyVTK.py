@@ -1,5 +1,4 @@
 def scalar_field_to_vtk(odb, part_name, fields, step=-1, frame=-1, output_file = ''):
-
     """
     Directly generates a VTK Legacy file from the abaqus Output Database File.
     VTK file is appended point and element data, element centroid scalar fields.
@@ -8,8 +7,8 @@ def scalar_field_to_vtk(odb, part_name, fields, step=-1, frame=-1, output_file =
         odb         : Abaqus Odb object
         part_name   : Name of part to generate geometry from
         fields      : List of strings representing the fields to extract
-        step        : (Optionally) Step at which fields are found
-        frame       : (Optionally) Frame at which fields are found
+        step        : (Optional) Step at which fields are found
+        frame       : (Optional) Frame at which fields are found
         output_file : (Optional) The path name of the output VTK file
 
     Output:
@@ -103,10 +102,10 @@ def mesh_to_legacy_vtk(odb, part_name, output_file = '', step='', frame=-1):
 
         Input:
             odb         : Abaqus Odb object
-            part_name   : Name of part to generate geometry from
+            part_name   : Name of part to generate geometry from (instance name)
             output_file : (Optional) The path name of the output VTK file
-            step        : (Optionally) Step at which fields are found
-            frame       : (Optionally) Frame at which fields are found
+            step        : (Optional) Step at which fields are found
+            frame       : (Optional) Frame at which fields are found
 
         Output:
             Generates an ASCII Legacy VTK file with Cauchy stress at element 
@@ -114,7 +113,6 @@ def mesh_to_legacy_vtk(odb, part_name, output_file = '', step='', frame=-1):
 
         TODO:
             -
-
     """
     try:
         # from odbAccess import openOdb
@@ -163,7 +161,7 @@ def mesh_to_legacy_vtk(odb, part_name, output_file = '', step='', frame=-1):
         cell_types = list()
 
         # Dictionary to translate Abaqus element types to corresponding VTK Legacy
-        cell_type_dict = {'C3D8R': '12', 'C3D8': '12', 'C3D4': '10', 'C3D10': '24', 'CPS3': '5', 'CPE3': '5', 'CPS4R': '5', 'CPE4R': '5'}
+        cell_type_dict = {'C3D8R': '12', 'C3D8': '12', 'C3D4': '10', 'C3D10': '24', 'CPS3': '5', 'CPE3': '5', 'CPS4R': '5', 'CPE4R': '5', 'CPE8R': '23', 'CPS8R': '23'}
 
         # Total number of data points in list of element connectivity
         num_cell_data_points = sum(len(element.connectivity) for element in part.elements)
@@ -185,12 +183,14 @@ def mesh_to_legacy_vtk(odb, part_name, output_file = '', step='', frame=-1):
         for cellType in cell_types:
             vtk_file.write('\n'+cellType)
 
+        findley_csv_file = 'C:/temp/conf/QuadQuad/max_findley.csv'
         frame = odb.steps[step].frames[frame]
         field = frame.fieldOutputs['S'].getSubset(region=part, position=CENTROID)
         vtk_file.write('\n\nCELL_DATA '+ str(len(field.values)))
-        
+        csv_to_legacy_vtk(vtk_file, findley_csv_file)
         cellDataToLegacyVTK(vtk_file, field, frame)
         cellDataToLegacyVTK(vtk_file, field, frame, invariant="MISES")
+        
         field = frame.fieldOutputs['LE'].getSubset(region=part, position=CENTROID)
         cellDataToLegacyVTK(vtk_file, field, frame)
 
@@ -309,4 +309,40 @@ def nodalDataToLegacyVTK(output_handle, field_handle, frame_handle, invariant=''
             elif len(vector.data) == 2:
                 output_handle.write('\n'+ str(vector.data[0]) + ' ' + str(vector.data[1]) + ' 0.0')
     return
+
+
+def csv_to_legacy_vtk(output_handle, csv_file_name):
+
+
+    """
+    Translates a csv field to vtk legacy cell data..
+
+    TODO:
+    - Support for partial fields
+    """
+
+    import csv
+
+    with open(csv_file_name, 'r') as csv_file:
+        reader = csv.reader(csv_file)
+        num_rows = sum([1 for row in reader])
+
+        if num_rows < 0:
+            raise Exception("File empty!")
+        
+        csv_file.seek(0)
+        #header = next(reader)
+        field_name = 'Findley'
+        #print("Header: {}".format(header))
+        
+        print("Number of rows: {}".format(num_rows))
+    	
+        output_handle.write('\n\nCELL_DATA {}'.format(num_rows))
+        output_handle.write('\nSCALARS {} double'.format(field_name))
+        output_handle.write('\nLOOKUP_TABLE default\n')
+    
+        for row in reader:
+            output_handle.write('{}\n'.format(row[1]))
+    return
+
 
