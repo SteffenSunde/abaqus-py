@@ -345,4 +345,3 @@ def csv_to_legacy_vtk(output_handle, csv_file_name):
             output_handle.write('{}\n'.format(row[1]))
     return
 
-
