@@ -558,9 +558,13 @@ def extract_contact(odb_handle, set_name, step_name, csys_name, frame_no=-1, met
     data = data[data[:,0].argsort()]
 
     # Export data
+    # header argument in savetxt() is not available in abaqus version of numpy btw
     file_name = "contact_parameters-{}-{}-{}.csv".format(step_no, frame_no, meta)
-    np.savetxt(file_name, data, delimiter=',')
-    print("Data successfully written to {}.".format(file_name))
+    with open(file_name, 'w') as f:
+        f.write("x,y,cpress,cshear1,cslip1,s11\n")
+    with open(file_name, 'a') as f:
+        np.savetxt(f, data, delimiter=',')
+        print("Data successfully written to {}.".format(file_name))
 
 
 def extract_contact_path(odb_handle, session_handle, path_name, steps = [], meta=''):
