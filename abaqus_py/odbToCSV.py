@@ -310,19 +310,24 @@ def nodal_data_section(field_name, odb_handle, set_name, frame_handle, csys_name
     if csys_name == "":
         field = frame_handle.fieldOutputs[field_name].getSubset(region=set_handle, position=ELEMENT_NODAL)
     else:
+        deformation_field = frame_handle.fieldOutputs['U']
         csys_handle = odb_handle.rootAssembly.datumCsyses[csys_name.upper()]
-        field = frame_handle.fieldOutputs[field_name].getSubset(region=set_handle, position=ELEMENT_NODAL).getTransformedField(datumCsys=csys_handle)
+        field = frame_handle.fieldOutputs[field_name].getSubset(region=set_handle, position=ELEMENT_NODAL).getTransformedField(datumCsys=csys_handle, deformationField=deformation_field)
 
     num_components = max(len(field.componentLabels), 1)
     result_dict = {}
     connected_dict = dict([(node.nodeLabel, 0) for node in field.values])
 
     # This doesnt work because for node set 
-    for element_node in field.values: #  len(field.values) is not len(nodes) ??
+    # SLS 28.03: Seems to give half the correct value..
+    for element_node in field.values: 
         node_label = element_node.nodeLabel  
         # result[i, :] += element_node.data
         # connected_elements[i] += 1
-        result_dict[node_label] = element_node.data
+        if node_label in result_dict:
+            result_dict[node_label] += element_node.data
+        else:
+            result_dict[node_label] = element_node.data
         connected_dict[node_label] += 1
         #result[node_label - 1, :] += element_node.data  # How to name these with labels of arbitrary integer id? TODO
         #connected_elements[node_label - 1] += 1
@@ -343,6 +348,19 @@ def nodal_data_section(field_name, odb_handle, set_name, frame_handle, csys_name
 
     return result, labels
 
+
+def create_rotating_csys(odb_handle, origin, x, y, name):
+    node1 = odb_handle.rootAssembly.nodeSets[origin].nodes[0][0]
+    node2 = odb_handle.rootAssembly.nodeSets[x].nodes[0][0]
+    node3 = odb_handle.rootAssembly.nodeSets[y].nodes[0][0]
+    odb_handle.rootAssembly.DatumCsysByThreeNodes(name=name, 
+        coordSysType=CARTESIAN, origin=node1, point1=node2, point2=node3)
+
+    if odb_handle.isReadOnly():
+        print("Odb is read-only, so csys {} is only stored for the current session".format(name))
+    else:
+        odb_handle.save()
+    return
 
 def contact_data(field_name, odb_handle, set_name, frame_handle, csys_name):
     """
@@ -402,7 +420,8 @@ def nodal_data_to_csv_section(odb_handle, set_name, step_number=-1, frame_number
                             np.outer(csys_handle.zAxis, [0, 0, 1])
         transformation.transpose()
         #translation = csys_handle.origin  # What if csys is attached to node? origin will be [0, 0, 0]
-        translation = odb_handle.rootAssembly.nodeSets[set_name.upper()].instances[0].nodes[1349].coordinates
+        #translation = odb_handle.rootAssembly.nodeSets[set_name.upper()].instances[0].nodes[1349].coordinates
+        translation = odb_handle.rootAssembly.nodeSets['NODEORIGIN'].nodes[0][0].coordinates
         print("CSYS with translation {} chosen.".format(translation))
 
     # nodal_data_section(field_name, odb_handle, set_name, frame_handle):
@@ -527,7 +546,8 @@ def extract_contact(odb_handle, set_name, step_name, csys_name, frame_no=-1, met
     cpress = frame_handle.fieldOutputs['CPRESS'].getSubset(region=set_handle, position=NODAL)
     cshear = frame_handle.fieldOutputs['CSHEAR1'].getSubset(region=set_handle, position=NODAL)
     cslip = frame_handle.fieldOutputs['CSLIP1'].getSubset(region=set_handle, position=NODAL)
-    s11 = frame_handle.fieldOutputs['S'].getSubset(region=set_handle, position=ELEMENT_NODAL).getTransformedField(datumCsys=csys_handle)
+    deformation_field = frame_handle.fieldOutputs['U']
+    s11 = frame_handle.fieldOutputs['S'].getSubset(region=set_handle, position=ELEMENT_NODAL).getTransformedField(datumCsys=csys_handle, deformationField=deformation_field)
 
     # Interpolate nodal values for stress from element_nodal values.
     node_map = {}
